@@ -4,6 +4,17 @@ namespace Practice11.Tests;
 
 public class CRUDTests
 {
+    private async Task CreateTestUser()
+    {
+        await using var db = new DataContext();
+        var user = new User
+        {
+            Name = "test"
+        };
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+    }
+
     [Theory]
     [InlineData("test text")]
     [InlineData("")]
@@ -11,7 +22,8 @@ public class CRUDTests
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
-        var note = await CRUD.Create(text);
+        await CreateTestUser();
+        var note = await CRUDNote.Create(text, 1);
 
         Assert.NotNull(note);
         Assert.Equal(text, note.Text);
@@ -24,7 +36,8 @@ public class CRUDTests
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
-        Assert.Throws<AggregateException>(() => CRUD.Create(null!).Result);
+        await CreateTestUser();
+        Assert.Throws<AggregateException>(() => CRUDNote.Create(null!, 1).Result);
         await db.Database.EnsureDeletedAsync();
     }
 
@@ -35,49 +48,56 @@ public class CRUDTests
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
+        await CreateTestUser();
         db.Notes.Add(new Note
         {
             Text = search,
-            CreatedAt = DateTimeOffset.Now
+            CreatedAt = DateTimeOffset.Now,
+            UserId = 1
         });
         db.Notes.Add(new Note
         {
             Text = $"{search} lalala",
-            CreatedAt = DateTimeOffset.Now
+            CreatedAt = DateTimeOffset.Now,
+            UserId = 1
         });
         db.Notes.Add(new Note
         {
             Text = $"lalala",
-            CreatedAt = DateTimeOffset.Now
+            CreatedAt = DateTimeOffset.Now,
+            UserId = 1
         });
         await db.SaveChangesAsync();
 
-        var result = await CRUD.Read(search);
+        var result = await CRUDNote.Read(search);
 
         Assert.Equal(2, result.Count);
         await db.Database.EnsureDeletedAsync();
     }
-    
+
     [Fact]
     public async Task Read_PassId_Success()
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
+        await CreateTestUser();
         db.Notes.Add(new Note
         {
             Text = "lalala",
-            CreatedAt = DateTimeOffset.Now
+            CreatedAt = DateTimeOffset.Now,
+            UserId = 1
         });
         db.Notes.Add(new Note
         {
             Text = "tatata",
-            CreatedAt = DateTimeOffset.Now
+            CreatedAt = DateTimeOffset.Now,
+            UserId = 1
         });
         await db.SaveChangesAsync();
-        var result1 = await CRUD.Read(1);
-        var result2 = await CRUD.Read(2);
-        var result3 = await CRUD.Read(700);
-        
+        var result1 = await CRUDNote.Read(1);
+        var result2 = await CRUDNote.Read(2);
+        var result3 = await CRUDNote.Read(700);
+
         Assert.Equal("tatata", result2.Text);
         Assert.Equal("lalala", result1.Text);
         Assert.Null(result3);
@@ -92,20 +112,21 @@ public class CRUDTests
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
+        await CreateTestUser();
         var note = new Note
         {
             Text = "lalala",
-            CreatedAt = DateTimeOffset.Now
+            CreatedAt = DateTimeOffset.Now,
+            UserId = 1
         };
         db.Notes.Add(note);
         await db.SaveChangesAsync();
-        await CRUD.Update(note, change);
+        await CRUDNote.Update(note, change);
         await db.SaveChangesAsync();
-        
+
         Assert.NotNull(note);
         Assert.Equal(change, note.Text);
         await db.Database.EnsureDeletedAsync();
-
     }
 
     [Fact]
@@ -113,32 +134,36 @@ public class CRUDTests
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
+        await CreateTestUser();
         var note = new Note
         {
             Text = "lalala",
-            CreatedAt = DateTimeOffset.Now
+            CreatedAt = DateTimeOffset.Now,
+            UserId = 1
         };
         db.Notes.Add(note);
         await db.SaveChangesAsync();
-        
+
         Assert.True(db.Notes.Contains(note));
-        await CRUD.Delete(note);
+        await CRUDNote.Delete(note);
         Assert.False(db.Notes.Contains(note));
         await db.Database.EnsureDeletedAsync();
     }
-    
+
     [Fact]
     public async Task Delete_PassError_Fail()
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
+        await CreateTestUser();
         var note = new Note
         {
             Text = "lalala",
-            CreatedAt = DateTimeOffset.Now
+            CreatedAt = DateTimeOffset.Now,
+            UserId = 1
         };
-        
-        await Assert.ThrowsAsync<InvalidOperationException>(()=>CRUD.Delete(note));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => CRUDNote.Delete(note));
         await db.Database.EnsureDeletedAsync();
     }
 }

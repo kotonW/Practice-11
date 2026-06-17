@@ -2,15 +2,18 @@
 
 namespace Practice11;
 
-public class CRUD
+public class CRUDNote
 {
-    public static async Task<Note> Create(string text, CancellationToken ct = default)
+    public static async Task<Note> Create(string text,int userId, CancellationToken ct = default)
     {
         await using var db = new DataContext();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct);
+        if (user == null) throw new ArgumentException("User not found");
         var note = new Note()
         {
             Text = text,
             CreatedAt = DateTimeOffset.Now,
+            UserId = userId
         };
         db.Notes.Add(note);
         await db.SaveChangesAsync(ct);
@@ -34,6 +37,7 @@ public class CRUD
     public static async Task Update(Note note, string text, CancellationToken ct = default)
     {
         await using var db = new DataContext();
+        if (note == null) throw new ArgumentNullException(nameof(note));
         note.Text = text;
         note.CreatedAt = DateTimeOffset.Now;
         db.Notes.Update(note);
@@ -43,6 +47,7 @@ public class CRUD
     public static async Task Delete(Note note, CancellationToken ct = default)
     {
         await using var db = new DataContext();
+        if (note == null) throw new ArgumentNullException(nameof(note));
         db.Notes.Remove(note);
         await db.SaveChangesAsync(ct);
     }
