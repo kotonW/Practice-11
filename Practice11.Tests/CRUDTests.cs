@@ -18,7 +18,7 @@ public class CRUDTests
     [Theory]
     [InlineData("test text")]
     [InlineData("")]
-    public async Task Create_ValidText_Success(string text)
+    public async Task CreateNote_ValidText_Success(string text)
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
@@ -32,7 +32,7 @@ public class CRUDTests
     }
 
     [Fact]
-    public async Task Create_NullText_Fail()
+    public async Task CreateNote_NullText_Fail()
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
@@ -44,7 +44,7 @@ public class CRUDTests
     [Theory]
     [InlineData("test text")]
     [InlineData("q")]
-    public async Task Read_ValidText_Success(string search)
+    public async Task ReadNote_ValidText_Success(string search)
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
@@ -76,7 +76,7 @@ public class CRUDTests
     }
 
     [Fact]
-    public async Task Read_PassId_Success()
+    public async Task ReadNote_PassId_Success()
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
@@ -108,7 +108,7 @@ public class CRUDTests
     [InlineData("quake")]
     [InlineData("69")]
     [InlineData("")]
-    public async Task Update_ValidText_Success(string change)
+    public async Task UpdateNote_ValidText_Success(string change)
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
@@ -130,7 +130,7 @@ public class CRUDTests
     }
 
     [Fact]
-    public async Task Delete_PassValid_Success()
+    public async Task DeleteNote_PassValid_Success()
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
@@ -151,7 +151,7 @@ public class CRUDTests
     }
 
     [Fact]
-    public async Task Delete_PassError_Fail()
+    public async Task DeleteNote_PassError_Fail()
     {
         await using var db = new DataContext();
         await db.Database.EnsureCreatedAsync();
@@ -164,6 +164,114 @@ public class CRUDTests
         };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => CRUDNote.Delete(note));
+        await db.Database.EnsureDeletedAsync();
+    }
+    
+    [Theory]
+    [InlineData("test1")]
+    [InlineData("test2")]
+    public async Task CreateUser_ValidUsername_Success(string name)
+    {
+        await using var db = new DataContext();
+        await db.Database.EnsureCreatedAsync();
+
+        var user = await CRUDUser.Create(name);
+
+        Assert.NotNull(user);
+        Assert.Equal(name, user.Name);
+        Assert.True(user.Id != 0);
+        await db.Database.EnsureDeletedAsync();
+    }
+
+    [Fact]
+    public async Task CreateUser_NullUsername_Fail()
+    {
+        await using var db = new DataContext();
+        await db.Database.EnsureCreatedAsync();
+
+        Assert.Throws<AggregateException>(() => CRUDUser.Create(null!).Result);
+
+        await db.Database.EnsureDeletedAsync();
+    }
+
+    [Theory]
+    [InlineData("user1")]
+    [InlineData("user2")]
+    public async Task ReadUser_TextValid_Success(string text)
+    {
+        await using var db = new DataContext();
+        await db.Database.EnsureCreatedAsync();
+
+        await CRUDUser.Create("TestUser");
+        await CRUDUser.Create("TestUser2");
+        await CRUDUser.Create("TestUser1");
+
+        var result = await CRUDUser.Read(text);
+        Assert.Single(result);
+        await db.Database.EnsureDeletedAsync();
+    }
+
+    [Fact]
+    public async Task ReadUser_TestId_Success()
+    {
+        await using var db = new DataContext();
+        await db.Database.EnsureCreatedAsync();
+        await CRUDUser.Create("TestUser");
+        await CRUDUser.Create("TestUser1");
+        var result1 = await CRUDUser.Read(1);
+        var result2 = await CRUDUser.Read(2);
+        var result42 = await CRUDUser.Read(42);
+
+        Assert.Null(result42);
+        Assert.Equal("TestUser", result1.Name);
+        Assert.Equal("TestUser1", result2.Name);
+
+        await db.Database.EnsureDeletedAsync();
+    }
+
+    [Fact]
+    public async Task UpdateUser_UserUsernameUpdate_Success()
+    {
+        await using var db = new DataContext();
+        await db.Database.EnsureCreatedAsync();
+        var user = await CRUDUser.Create("TestUser");
+
+        await CRUDUser.Update(user, "TestUser2");
+
+        Assert.NotNull(user);
+        Assert.NotEqual("TestUser", user.Name);
+        Assert.Equal("TestUser2", user.Name);
+
+        await db.Database.EnsureDeletedAsync();
+    }
+
+    [Fact]
+    public async Task DeleteUser_UserDelete_Success()
+    {
+        await using var db = new DataContext();
+        await db.Database.EnsureCreatedAsync();
+
+        var user = await CRUDUser.Create("TestUser");
+        await CRUDUser.Delete(user);
+
+        Assert.Empty(db.Notes);
+        await db.Database.EnsureDeletedAsync();
+    }
+
+    [Fact]
+    public async Task GetUserNotesById_Success()
+    {
+        await using var db = new DataContext();
+        await db.Database.EnsureCreatedAsync();
+        var user = await CRUDUser.Create("TestUser");
+        await CRUDNote.Create("wawa", user.Id);
+        await CRUDNote.Create("tuz tuz", user.Id);
+
+        var result = await CRUDUser.GetUserNotes(1);
+
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count);
+
         await db.Database.EnsureDeletedAsync();
     }
 }
